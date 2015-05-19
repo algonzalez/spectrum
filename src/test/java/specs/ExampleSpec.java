@@ -7,6 +7,8 @@ import static com.greghaskins.spectrum.Spectrum.beforeEach;
 import static com.greghaskins.spectrum.Spectrum.describe;
 import static com.greghaskins.spectrum.Spectrum.it;
 import static com.greghaskins.spectrum.Spectrum.value;
+import static com.greghaskins.spectrum.Spectrum.xdescribe;
+import static com.greghaskins.spectrum.Spectrum.xit;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
@@ -23,6 +25,8 @@ import org.junit.runner.RunWith;
 
 import com.greghaskins.spectrum.Spectrum;
 import com.greghaskins.spectrum.Spectrum.Block;
+import com.greghaskins.spectrum.Spectrum.Predicate;
+import com.greghaskins.spectrum.Spectrum.SpecSection;
 import com.greghaskins.spectrum.Spectrum.Value;
 
 
@@ -173,4 +177,49 @@ public class ExampleSpec {{
 
     });
 
+    final String RUNS_SLOW = "RUNS_SLOW";
+    final String REQUIRES_DB = "REQUIRES_DB";
+
+    final Predicate<SpecSection> isTaggedAsSlow = x -> x.hasTag(RUNS_SLOW);
+    final Predicate<SpecSection> requiresDB = x -> x.hasTag(REQUIRES_DB);
+
+    final Predicate<SpecSection> runningOnLinux = x -> System.getProperty("os.name").toLowerCase().contains("linux");
+    final Predicate<SpecSection> runningOnMacOSX = x -> System.getProperty("os.name").toLowerCase().contains("mac");
+    final Predicate<SpecSection> runningOnWindows = x -> System.getProperty("os.name").toLowerCase().contains("windows");
+
+    Block doNothingBlock = () -> {};
+
+    describe("How to ignore testing behaviors:", () -> {
+        describe("pending descriptions will be ignored");
+        describe("descriptions with ignore() will be ignored - Duh!", doNothingBlock).ignore();
+        xdescribe("descriptions defined as xdescribe() will also be ignored", () -> {
+            it("behaviors nested in an ignored description will also be ignored", doNothingBlock);
+        }).ignore();
+
+        it("pending behaviors will be ignored");
+        it("behaviors with ignore() will be ignored - Duh!", doNothingBlock).ignore();
+        xit("behaviors defined as xit() will also be ignored", doNothingBlock);
+
+        describe("How to conditionally restrict testing behaviors using ignoreWhen():", () -> {
+            it("ignored on Linux", doNothingBlock).ignoreWhen(runningOnLinux);
+            it("ignored on Mac", doNothingBlock).ignoreWhen(runningOnMacOSX);
+            it("ignored on Windows", doNothingBlock).ignoreWhen(runningOnWindows);
+        });
+
+        describe("How to conditionally restrict testing behaviors using onlyWhen():", () -> {
+            it("only run on Linux", doNothingBlock).onlyWhen(runningOnLinux);
+            it("only run on Mac", doNothingBlock).onlyWhen(runningOnMacOSX);
+            it("only run on Windows", doNothingBlock).onlyWhen(runningOnWindows);
+        });
+
+        describe("Using tags to ignore testing behaviors:", () -> {
+            describe("description marked with a REQUIRES_DB tag will be ignored", doNothingBlock)
+                    .ignoreWhen(requiresDB)
+                    .tagWith(REQUIRES_DB);
+
+            it("only run on Windows and will run quickly", doNothingBlock)
+                    .tagWith(RUNS_SLOW)
+                    .onlyWhen((behavior) -> runningOnWindows.test(behavior) && !isTaggedAsSlow.test(behavior));
+        });
+    });
 }}

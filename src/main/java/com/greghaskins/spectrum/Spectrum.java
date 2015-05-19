@@ -13,7 +13,7 @@ public class Spectrum extends Runner {
      * A generic code block with a {@link #run()} method.
      *
      */
-    public static interface Block {
+    public interface Block {
 
         /**
          * Execute the code block, raising any {@code Throwable} that may occur.
@@ -21,6 +21,26 @@ public class Spectrum extends Runner {
          * @throws Throwable
          */
         void run() throws Throwable;
+    }
+
+    public interface Predicate<T> {
+        boolean test(T obj);
+    }
+
+    public interface Taggable<T> {
+        T tagWith(String... tags);
+        boolean hasTag(String tag);
+    }
+
+    public interface SpecSection extends Taggable<SpecSection> {
+        SpecSection ignore();
+        SpecSection ignoreWhen(Predicate<SpecSection> condition);
+        SpecSection onlyWhen(Predicate<SpecSection> condition);
+    }
+
+    // when defined without block, it will be treated as an ignored test
+    public static SpecSection describe(final String context) {
+        return describe(context, new EmptyBlock()).ignore();
     }
 
     /**
@@ -32,9 +52,22 @@ public class Spectrum extends Runner {
      *            {@link Block} with one or more calls to {@link #it(String, Block) it} that define each expected behavior
      *
      */
-    public static void describe(final String context, final Block block) {
-        final Context newContext = new Context(Description.createSuiteDescription(context));
+    public static SpecSection describe(final String context, final Block block) {
+        Context parentCtx = getCurrentContext();
+        final Context newContext = new Context(
+                Description.createSuiteDescription(context
+                +  (block instanceof EmptyBlock ? " - [pending]" : "")));
         enterContext(newContext, block);
+        return newContext;
+    }
+
+    public static SpecSection xdescribe(final String context, final Block block) {
+        return describe(context, block).ignore();
+    }
+
+    // when defined without block, it will be treated as an ignored test
+    public static SpecSection it(final String behavior) {
+        return it(behavior, new EmptyBlock()).ignore();
     }
 
     /**
@@ -46,8 +79,12 @@ public class Spectrum extends Runner {
      *            {@link Block} that verifies the system behaves as expected and throws a {@link java.lang.Throwable Throwable}
      *            if that expectation is not met.
      */
-    public static void it(final String behavior, final Block block) {
-        getCurrentContext().addTest(behavior, block);
+    public static SpecSection it(final String behavior, final Block block) {
+        return getCurrentContext().addTest(behavior, block);
+    }
+
+    public static SpecSection xit(final String behavior, final Block block) {
+        return it(behavior, block).ignore();
     }
 
     /**
